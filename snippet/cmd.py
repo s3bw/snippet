@@ -1,68 +1,11 @@
-import os
-import glob
-from datetime import datetime
-from pathlib import PurePath, Path
+import shutil
+from pathlib import Path
 
 import click
 from vim_edit import editor
 
-
-class Storage:
-
-    root = Path.home()
-
-    def namespace_path(self, namespace):
-        return f"{self.root}/.snippets/{namespace}/"
-
-    def commit_path(self, namespace, commit):
-        """ Batches are tagged at creation."""
-        return f"{self.root}/.snippets/{namespace}/{commit}/"
-
-    def commit_info(self, namespace, commit):
-        return f"{self.root}/.snippets/{namespace}/{commit}/meta.json"
-
-    def check_exists(self, folder):
-        print(folder)
-        # Path(folder).mkdir(parents=True, exist_ok=True)
-
-    def list(self, folder):
-        self.check_exists(folder)
-        for file in os.listdir(folder):
-            print(file)
-
-
-class Tracker:
-    """Should I manage snippets in a separate dir?"""
-
-    pattern = "snippet*.py"
-
-    def __init__(self):
-        self.dir = PurePath(os.getcwd())
-        self.count = self.total_snippets()
-
-    def next_snippet(self):
-        self.count += 1
-        return f"snippet{self.count}.py"
-
-    def snippet(self):
-        return f"snippet{self.count}.py"
-
-    def snippet_info(self, snippet):
-        info = os.stat(snippet)
-        timestamp = info.st_birthtime
-        created = datetime.utcfromtimestamp(timestamp).strftime(
-            '%Y-%m-%d %H:%M:%S')
-        return {
-            'name': snippet,
-            'created': created,
-        }
-
-    def total_snippets(self):
-        """ Count 'snippet\\d.py' in current dir."""
-        return len(self.all_snippets())
-
-    def all_snippets(self):
-        return glob.glob(self.pattern)
+from snippet.tracker import Tracker
+from snippet.storage import Storage
 
 
 def initialise():
@@ -73,7 +16,7 @@ def initialise():
 def status():
     store, track = initialise()
     print(f"Currently {track.count} snippets:")
-    for snippet in track.all_snippets():
+    for snippet in track.snippets():
         info = track.snippet_info(snippet)
         # Order Snippets
         print(f"  >   {info['name']} - {info['created']}")
@@ -104,35 +47,85 @@ def log():
     store, track = initialise()
     namespace = track.dir.name
 
+    # Currently prints snippet names in folder
+    # this needs to traverse previous commits
+    # and provide information on historical
+    # snippet commits. Ordered by date
     store.list(store.namespace_path(namespace))
 
 
 @click.command()
-@click.argument("message")
+@click.argument("message", required=True)
 def commit(message):
     store, track = initialise()
     namespace = track.dir.name
+    if track.total_snippets() < 1:
+        raise Exception("No snippets to commit")
+    # Maybe instead of hash have the datetime?
+    # Or have it be a branch-like name?
     hashname = "HASH"
+    store.check_exists(store.commit_path(namespace, hashname))
 
-    path = store.commit_path(namespace, hashname)
-    # store.check_exists(path)
-    # Move from current directory -> commit path
+    for snippet in track.snippets():
+        shutil.move(snippet, store.snippet_path(namespace, hashname, snippet))
+    print(message)
     # Write to commit meta.json (date, message, number of snippets)
 
 
-def pull(batch_id):
+@click.command()
+@click.argument("commit_sha", required=True)
+def checkout(commit_sha):
     """ pull specific commit."""
-    pass
+    store, track = initialise()
+    namespace = track.dir.name
+
+    path = Path(store.commit_path(namespace, commit_sha))
+    if not path.exists():
+        raise Exception("Commit doesn't exist")
+
+    for snippet in store.list(path):
+        if Path(track.dir, snippet).exists():
+            raise Exception("Pull will overwrite {snippet}")
+
+    for snippet in store.list(path):
+        from_file = path / snippet
+        to_file = track.dir / snippet
+        shutil.copy2(from_file, to_file)
+
+    print("Pull Completed")
 
 
-def push(batch_id):
+@click.command()
+@click.argument("commit_sha", required=True)
+def push(commit_sha):
     """ update specific commit."""
-    pass
+    store, track = initialise()
+    namespace = track.dir.name
+    path = Path(store.commit_path(namespace, commit_sha))
+    if not path.exists():
+        raise Exception("Can not push to a commit that doesn't exist")
+    # Print are you sure??
+
+    # Delete snippets in HASH
+    # Open meta for editing
+    for snippet in track.snippets():
+        from_file = track.dir / snippet
+        to_file = path / snippet
+        shutil.move(from_file, to_file)
+    print("Push complete")
 
 
-def delete(batch_id):
+@click.command()
+@click.argument("commit_sha", required=True)
+def delete(commit_sha):
     """ delete specific commit."""
-    pass
+    store, track = initialise()
+    namespace = track.dir.name
+    path = Path(store.commit_path(namespace, commit_sha))
+    if not path.exists():
+        raise Exception("Can not delete a commit that doesn't exist")
+    # Print are you sure??
+    # Delete snippets in HASH including meta
 
 
 @click.group()
@@ -144,7 +137,9 @@ def main():
     cli.add_command(new)
     cli.add_command(edit)
     cli.add_command(commit)
-    cli.add_command(list)
+    cli.add_command(log)
     cli.add_command(status)
-    # cli.add_command(pull)
+    cli.add_command(checkout)
+    cli.add_command(push)
+    cli.add_command(delete)
     cli()
