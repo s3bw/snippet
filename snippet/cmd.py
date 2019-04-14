@@ -1,9 +1,13 @@
+import uuid
 import shutil
 from pathlib import Path
+from datetime import datetime
 
 import click
 from vim_edit import editor
 
+from snippet import meta
+from snippet.meta import Meta
 from snippet.tracker import Tracker
 from snippet.storage import Storage
 
@@ -47,11 +51,14 @@ def log():
     store, track = initialise()
     namespace = track.dir.name
 
-    # Currently prints snippet names in folder
-    # this needs to traverse previous commits
-    # and provide information on historical
-    # snippet commits. Ordered by date
-    store.list(store.namespace_path(namespace))
+    logs = []
+    for file_name in store.list(store.namespace_path(namespace)):
+        file_path = store.meta_path(namespace, file_name)
+        logs.append(meta.load(store.read(file_path)))
+
+    logs = sorted(logs, key=lambda x: x.date)
+    for info in logs:
+        print(info)
 
 
 @click.command()
@@ -59,17 +66,21 @@ def log():
 def commit(message):
     store, track = initialise()
     namespace = track.dir.name
+    date = datetime.now()
+
     if track.total_snippets() < 1:
         raise Exception("No snippets to commit")
-    # Maybe instead of hash have the datetime?
-    # Or have it be a branch-like name?
-    hashname = "HASH"
-    store.check_exists(store.commit_path(namespace, hashname))
 
+    commit_sha = str(uuid.uuid4())[:8]
+    store.check_exists(store.commit_path(namespace, commit_sha))
+
+    meta_data = Meta(date, commit_sha, message, track.total_snippets())
+    store.write(store.meta_path(namespace, commit_sha), meta_data.to_json())
     for snippet in track.snippets():
-        shutil.move(snippet, store.snippet_path(namespace, hashname, snippet))
-    print(message)
-    # Write to commit meta.json (date, message, number of snippets)
+        shutil.move(snippet, store.snippet_path(namespace, commit_sha,
+                                                snippet))
+
+    print(f"Written to commit: {commit_sha}")
 
 
 @click.command()
@@ -85,7 +96,7 @@ def checkout(commit_sha):
 
     for snippet in store.list(path):
         if Path(track.dir, snippet).exists():
-            raise Exception("Pull will overwrite {snippet}")
+            raise Exception(f"Pull will overwrite {snippet}")
 
     for snippet in store.list(path):
         from_file = path / snippet
@@ -97,14 +108,27 @@ def checkout(commit_sha):
 
 @click.command()
 @click.argument("commit_sha", required=True)
-def push(commit_sha):
+@click.argument("message", required=False)
+def update(commit_sha, message):
     """ update specific commit."""
     store, track = initialise()
     namespace = track.dir.name
     path = Path(store.commit_path(namespace, commit_sha))
     if not path.exists():
-        raise Exception("Can not push to a commit that doesn't exist")
-    # Print are you sure??
+        raise Exception("Can not push to a commit that does not exist.")
+
+    click.confirm(
+        f"Update will overwrite the current contents of {commit_sha}, are you sure?",
+        abort=True)
+
+    file_path = store.meta_path(namespace, commit_sha)
+    meta_data = meta.load(store.read(file_path))
+    new_messge = message if message else meta_data.message
+    meta_data.update(new_messge, track.total_snippets())
+
+    store.delete(path)
+    store.check_exists(store.commit_path(namespace, commit_sha))
+    store.write(store.meta_path(namespace, commit_sha), meta_data.to_json())
 
     # Delete snippets in HASH
     # Open meta for editing
@@ -112,7 +136,7 @@ def push(commit_sha):
         from_file = track.dir / snippet
         to_file = path / snippet
         shutil.move(from_file, to_file)
-    print("Push complete")
+    print("Update complete")
 
 
 @click.command()
@@ -123,9 +147,12 @@ def delete(commit_sha):
     namespace = track.dir.name
     path = Path(store.commit_path(namespace, commit_sha))
     if not path.exists():
-        raise Exception("Can not delete a commit that doesn't exist")
-    # Print are you sure??
-    # Delete snippets in HASH including meta
+        raise Exception("Can not delete a commit that does not exist")
+
+    click.confirm(
+        f"Deleting will destroy the contents of {commit_sha}, are you sure?",
+        abort=True)
+    store.delete(path)
 
 
 @click.group()
@@ -140,6 +167,6 @@ def main():
     cli.add_command(log)
     cli.add_command(status)
     cli.add_command(checkout)
-    cli.add_command(push)
+    cli.add_command(update)
     cli.add_command(delete)
     cli()

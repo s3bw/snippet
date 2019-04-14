@@ -19,5 +19,6 @@ setup(
     author_email="s.williamswynn.mail@gmail.com",
     packages=find_packages(include=["snippet"]),
     entry_points={'console_scripts': ["snip=snippet.cmd:main"]},
+    install_requires=["click", "vim-edit"],
     python_requires=">=3.6",
 )

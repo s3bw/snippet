@@ -1,5 +1,5 @@
 <h1 align="center">
-    Snippet
+    Snip
 </h1>
 
 <h4 align="center">
@@ -9,19 +9,8 @@
 ## Install
 
 ```
-pip install snippet
+pip install snip
 ```
-
-## Checklist
-
-- *snip new:* (Done)
-- *snip edit:* (Done)
-- *snip checkout:* (Done)
-- *snip status:* (Done) - Make prettier
-- *snip commit:* (Create unique hash, and write meta data)
-- *snip log:* (Relies on Meta data)
-- *snip push:* (Open Meta data + add warning)
-- *snip delete:* (To do)
 
 ## Usage
 
@@ -45,26 +34,26 @@ Cleans snippets and logs them as a batch.
 snip commit
 ```
 
-List available batches.
+List available batches of snippets.
 
 ```
-snip list
+snip log
 ```
 
-Gets all snippets by batch id.
+Gets all snippets by batch sha.
 
 ```
-snip checkout <batch-id>
+snip checkout <batch-sha>
 ```
 
-Updates a batch id with current snippets (if empty raise)
+Updates a batch sha with current snippets (if empty raise)
 
 ```
-snip push <batch-id>
+snip update <batch-sha>
 ```
 
 Delete a batch of snippets
 
 ```
-snip delete <batch-id>
+snip delete <batch-sha>
 ```
