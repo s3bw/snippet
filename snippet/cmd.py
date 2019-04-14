@@ -56,6 +56,10 @@ def log():
         file_path = store.meta_path(namespace, file_name)
         logs.append(meta.load(store.read(file_path)))
 
+    if not logs:
+        print(f"No snippets for namespace: '{namespace}'")
+        exit()
+
     logs = sorted(logs, key=lambda x: x.date)
     for info in logs:
         print(info)
