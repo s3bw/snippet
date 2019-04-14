@@ -9,7 +9,7 @@
 ## Install
 
 ```
-pip install snip
+pip install snippet-manager
 ```
 
 ## Usage
