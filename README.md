@@ -1,5 +1,5 @@
 <h1 align="center">
-    Snip
+    Snippet-Manager
 </h1>
 
 <h4 align="center">
