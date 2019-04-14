@@ -18,6 +18,7 @@ def initialise():
 
 @click.command()
 def status():
+    """ Check the available snippets in current directory."""
     store, track = initialise()
     print(f"Currently {track.count} snippets:")
     for snippet in track.snippets():
@@ -28,6 +29,7 @@ def status():
 
 @click.command()
 def new():
+    """ Create a new snippet."""
     store, track = initialise()
     snippet_name = track.next_snippet()
 
@@ -38,6 +40,7 @@ def new():
 
 @click.command()
 def edit():
+    """ Edit most recent snippet."""
     store, track = initialise()
     snippet_name = track.snippet()
 
@@ -48,6 +51,7 @@ def edit():
 
 @click.command()
 def log():
+    """ List created batches."""
     store, track = initialise()
     namespace = track.dir.name
 
@@ -68,6 +72,7 @@ def log():
 @click.command()
 @click.argument("message", required=True)
 def commit(message):
+    """ Create a new batch of snippets."""
     store, track = initialise()
     namespace = track.dir.name
     date = datetime.now()
@@ -90,7 +95,7 @@ def commit(message):
 @click.command()
 @click.argument("commit_sha", required=True)
 def checkout(commit_sha):
-    """ pull specific commit."""
+    """ Checkout batch by commit."""
     store, track = initialise()
     namespace = track.dir.name
 
@@ -114,7 +119,7 @@ def checkout(commit_sha):
 @click.argument("commit_sha", required=True)
 @click.argument("message", required=False)
 def update(commit_sha, message):
-    """ update specific commit."""
+    """ Update batch by commit."""
     store, track = initialise()
     namespace = track.dir.name
     path = Path(store.commit_path(namespace, commit_sha))
@@ -146,7 +151,7 @@ def update(commit_sha, message):
 @click.command()
 @click.argument("commit_sha", required=True)
 def delete(commit_sha):
-    """ delete specific commit."""
+    """ Delete a batch of snippets by commit."""
     store, track = initialise()
     namespace = track.dir.name
     path = Path(store.commit_path(namespace, commit_sha))
