@@ -19,18 +19,23 @@ class Meta:
         self.count = count
 
     def __str__(self):
-        return (_GREEN + f"Commit: {self.hash}\n" + _ENDC +
-                f"Number of files: {self.count}\n"
-                f"Date: {self.date:%a %b %d %H:%M:%S %Y}\n\n"
-                f"\t{self.message}\n")
+        message = "\n\t".join(self.message.split("\n"))
+        return (
+            f"{_GREEN}Commit: {self.hash}\n{_ENDC}"
+            f"Number of files: {self.count}\n"
+            f"Date: {self.date:%a %b %d %H:%M:%S %Y}\n\n"
+            f"\t{message}\n"
+        )
 
     def to_json(self):
-        return save({
-            "date": self.date,
-            "message": self.message,
-            "count": self.count,
-            "hash": self.hash,
-        })
+        return save(
+            {
+                "date": self.date,
+                "message": self.message,
+                "count": self.count,
+                "hash": self.hash,
+            }
+        )
 
 
 def load(content):

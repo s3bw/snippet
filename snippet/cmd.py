@@ -2,14 +2,20 @@ import uuid
 import shutil
 from pathlib import Path
 from datetime import datetime
+from tempfile import NamedTemporaryFile
 
 import click
 from vim_edit import editor
 
 from snippet import meta
+from snippet import utils
 from snippet.meta import Meta
 from snippet.tracker import Tracker
 from snippet.storage import Storage
+
+
+_RED = "\033[91m"
+_ENDC = "\033[0m"
 
 
 def initialise():
@@ -20,11 +26,10 @@ def initialise():
 def status():
     """ Check the available snippets in current directory."""
     store, track = initialise()
-    print(f"Currently {track.count} snippets:")
     for snippet in track.snippets():
-        info = track.snippet_info(snippet)
         # Order Snippets
-        print(f"  >   {info['name']} - {info['created']}")
+        print(track.snippet_info(snippet))
+    print(f"\nCurrently {track.count} snippets")
 
 
 @click.command()
@@ -33,7 +38,7 @@ def new():
     store, track = initialise()
     snippet_name = track.next_snippet()
 
-    with open(snippet_name, 'x') as file:
+    with open(snippet_name, "x") as file:
         editor.open(file)
     print("Snippet created.")
 
@@ -44,7 +49,7 @@ def edit():
     store, track = initialise()
     snippet_name = track.snippet()
 
-    with open(snippet_name, 'r') as file:
+    with open(snippet_name, "r") as file:
         editor.open(file)
     print("Edited.")
 
@@ -69,8 +74,15 @@ def log():
         print(info)
 
 
+NEW_MESSAGE = """
+# Commit message editor.
+# Lines starting with '#'
+# are ignored.
+"""
+
+
 @click.command()
-@click.argument("message", required=True)
+@click.argument("message", required=False)
 def commit(message):
     """ Create a new batch of snippets."""
     store, track = initialise()
@@ -80,14 +92,24 @@ def commit(message):
     if track.total_snippets() < 1:
         raise Exception("No snippets to commit")
 
+    if not message:
+        with NamedTemporaryFile(mode="r+", suffix=".tmp") as tempfile:
+            tempfile.write(NEW_MESSAGE)
+            editor.open(tempfile)
+            content = tempfile.read()
+
+        message = utils.ignore_lines(content)
+        if not message:
+            print(f"{_RED}Aborted!{_ENDC}")
+            exit()
+
     commit_sha = str(uuid.uuid4())[:8]
     store.check_exists(store.commit_path(namespace, commit_sha))
 
     meta_data = Meta(date, commit_sha, message, track.total_snippets())
     store.write(store.meta_path(namespace, commit_sha), meta_data.to_json())
     for snippet in track.snippets():
-        shutil.move(snippet, store.snippet_path(namespace, commit_sha,
-                                                snippet))
+        shutil.move(snippet, store.snippet_path(namespace, commit_sha, snippet))
 
     print(f"Written to commit: {commit_sha}")
 
@@ -128,7 +150,8 @@ def update(commit_sha, message):
 
     click.confirm(
         f"Update will overwrite the current contents of {commit_sha}, are you sure?",
-        abort=True)
+        abort=True,
+    )
 
     file_path = store.meta_path(namespace, commit_sha)
     meta_data = meta.load(store.read(file_path))
@@ -159,8 +182,8 @@ def delete(commit_sha):
         raise Exception("Can not delete a commit that does not exist")
 
     click.confirm(
-        f"Deleting will destroy the contents of {commit_sha}, are you sure?",
-        abort=True)
+        f"Deleting will destroy the contents of {commit_sha}, are you sure?", abort=True
+    )
     store.delete(path)
 
 
