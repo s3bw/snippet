@@ -21,11 +21,11 @@ class Storage:
         return f"{self.root}/.snippets/{namespace}/{commit}/{snippet}"
 
     def write(self, path, data):
-        with open(path, 'w') as file:
+        with open(path, "w") as file:
             file.write(data)
 
     def read(self, path):
-        with open(path, 'r') as file:
+        with open(path, "r") as file:
             content = file.read()
         return content
 
@@ -38,5 +38,18 @@ class Storage:
     def list(self, folder):
         self.check_exists(folder)
         for file in os.listdir(folder):
-            if file != 'meta.json':
+            if file != "meta.json":
                 yield file
+
+
+_instance = Storage()
+
+namespace_path = _instance.namespace_path
+meta_path = _instance.meta_path
+read = _instance.read
+check_exists = _instance.check_exists
+commit_path = _instance.commit_path
+snippet_path = _instance.snippet_path
+list = _instance.list
+delete = _instance.delete
+write = _instance.write

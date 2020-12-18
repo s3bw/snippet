@@ -1,3 +1,4 @@
+"""Tracks snippets in the local directory."""
 import os
 import ast
 import glob
@@ -23,7 +24,8 @@ class Info:
         )
 
     def __str__(self):
-        return f"{_WARNING}=> {self.name} - {self.created}{_ENDC}\n{self.header}\n"
+        header = "" if not self.header else f"{self.header}\n"
+        return f"{_WARNING}=> {self.name} - {self.created}{_ENDC}\n{header}"
 
     def todict(self):
         return {
@@ -39,7 +41,7 @@ class Tracker:
     pattern = "snippet*.py"
 
     def __init__(self):
-        self.dir = PurePath(os.getcwd())
+        self.directory = PurePath(os.getcwd())
         self.count = self.total_snippets()
 
     def next_snippet(self):
@@ -62,3 +64,14 @@ class Tracker:
 
     def snippets(self):
         return glob.glob(self.pattern)
+
+
+_instance = Tracker()
+
+snippet = _instance.snippet
+snippets = _instance.snippets
+snippet_info = _instance.snippet_info
+next_snippet = _instance.next_snippet
+directory = _instance.directory
+count = _instance.count
+total_snippets = _instance.total_snippets
