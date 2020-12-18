@@ -6,6 +6,8 @@ verify_ssl = true
 [dev-packages]
 black = "*"
 pytest = "*"
+wheel-inspect = "*"
+twine = "*"
 
 [packages]
 snippet-manager = {editable = true, path = "."}
